@@ -10,7 +10,6 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.util.StatCounter;
-import org.json.*;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -24,9 +23,9 @@ public class Project {
     private static final int currentNbTweetFiles = 21;
 
     private static final String OUTPUT_URL = "/user/alegendre001/output/";
-    private static String[] RESSOURCES_URLS = [];
+    private static String[] RESSOURCES_URLS = new String[21];
 
-    public static fillRessources(){
+    public static void fillRessources(){
         for(int i = 0; i < currentNbTweetFiles; i++){
             String tweetDay = String.valueOf(i+1);
             if(i < 9){
@@ -36,15 +35,24 @@ public class Project {
         }
     }
 
+    public static void topK(JavaRDD<String> data){
+        TreeMap<Integer, String> top10 = new TreeMap<>();
+
+        //JavaRDD<String> output = context.parallelize(result);
+
+        //ArrayList<String> top = output.top(10);
+    }
+
     public static void main(String[] args) {
-		SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
-		context = new JavaSparkContext(conf);
+
+	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
+	    JavaSparkContext context = new JavaSparkContext(conf);
         fillRessources();
 
         //Day 01 for start
         JavaRDD<String> lines = context.textFile(RESSOURCES_URLS[0]);
+        System.out.println(lines.take(2));
         
-
-		context.close();
+	    context.close();
 	}
 }
