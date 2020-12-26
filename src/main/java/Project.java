@@ -99,9 +99,13 @@ public class Project {
 
         //System.out.println(lines.take(3));
 
-        JavaRDD<String> test = lines.flatMap(line -> extractHashtagsFromLine(line));
+        JavaPairRDD<String, Integer> test = context.parallelizePairs(lines
+            .flatMap(line -> extractHashtagsFromLine(line))
+            .mapToPair(hashtag -> new Tuple2<>(hashtag, 1))
+            .reduceByKey((a, b) -> a + b)
+            .top(10));
 
-        System.out.println(test.take(20));
+        System.out.println(test.take(10));
 
 
 	    context.close();
