@@ -46,16 +46,27 @@ public class Project {
     }
 
     public static Iterator<String> extractHashtagsFromLine(String line){
-        ArrayList<String> result = new ArrayList();
+        List<String> result = new ArrayList();
 
         JSONObject json = new JSONObject(line);
-        JSONObject entities = json.getJSONObject("entities");
+
+        JSONObject entities = null;
+        try {
+            entities = json.getJSONObject("entities");
+        }catch(Exception e) {
+            
+        }
 
         if(entities == null){
             return result.iterator();
         }
 
-        JSONArray hashtags = entities.getJSONArray("hashtags");
+        JSONArray hashtags = null;
+        try {
+            hashtags = entities.getJSONArray("hashtags");
+        }catch(Exception e) {
+            
+        }
 
         if(hashtags == null){
             return result.iterator();
@@ -75,7 +86,7 @@ public class Project {
         fillRessources();
 
         //Day 01 for start
-        JavaRDD<String> lines = context.textFile(RESSOURCES_URLS[4]);
+        JavaRDD<String> lines = context.textFile(RESSOURCES_URLS[2]);
 /*
         JavaPairRDD<String, Integer> = lines
             .flatMap(line -> Arrays.asList(line.split(",")).iterator())
@@ -85,6 +96,8 @@ public class Project {
 
         //JavaRDD<String> test = lines.flatMap(line -> Arrays.asList(line.split(",")).iterator());
         //JavaRDD<String> tryt = test.filter(line -> line.contains("hashtags"));
+
+        //System.out.println(lines.take(3));
 
         JavaRDD<String> test = lines.flatMap(line -> extractHashtagsFromLine(line));
 
