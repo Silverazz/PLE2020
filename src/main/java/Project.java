@@ -17,6 +17,7 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
 import java.lang.Math;
+import java.beans.Transient;
 import java.io.Serializable;
 
 public class Project {
@@ -79,6 +80,15 @@ public class Project {
         return result.iterator();
     }
 
+    
+    private static class TupleComparator implements Comparator<Tuple2<String, Integer>>, Serializable {
+
+        @Override
+        public int compare(Tuple2<String, Integer> tuple1, Tuple2<String, Integer> tuple2) {
+            return Integer.compare(tuple1._2, tuple2._2);
+        }
+    }
+
     public static void main(String[] args) {
 
 	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
@@ -86,7 +96,7 @@ public class Project {
         fillRessources();
 
         //Day 01 for start
-        JavaRDD<String> lines = context.textFile(RESSOURCES_URLS[2]);
+        JavaRDD<String> lines = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
 /*
         JavaPairRDD<String, Integer> = lines
             .flatMap(line -> Arrays.asList(line.split(",")).iterator())
@@ -99,14 +109,18 @@ public class Project {
 
         //System.out.println(lines.take(3));
 
-        JavaPairRDD<String, Integer> test = context.parallelizePairs(lines
+        
+        //TupleComparator tupleComparator = new TupleComparator();
+
+        List<Tuple2<String, Integer>> test = lines
             .flatMap(line -> extractHashtagsFromLine(line))
-            .mapToPair(hashtag -> new Tuple2<>(hashtag, 1))
+            .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
             .reduceByKey((a, b) -> a + b)
-            .top(10));
+            .top(10, new TupleComparator());
 
-        System.out.println(test.take(10));
+        JavaPairRDD<String, Integer> test2 = context.parallelizePairs(test);
 
+        System.out.println(test2.take(10));
 
 	    context.close();
 	}
