@@ -16,6 +16,7 @@ import scala.Tuple2;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
+
 import java.lang.Math;
 import java.beans.Transient;
 import java.io.Serializable;
@@ -38,49 +39,39 @@ public class Project {
         }
     }
 
-    public static void topK(JavaRDD<String> data){
-        
-
-        //JavaRDD<String> output = context.parallelize(result);
-
-       // ArrayList<String> top = output.top(10);
+    public static String concateAllRessources(){
+        String allRessources = RESSOURCES_URLS[0];
+        for(int i = 1; i < currentNbTweetFiles; i++){
+            allRessources = allRessources.concat("," + RESSOURCES_URLS[i]);
+        }
+        return allRessources;
     }
 
     public static Iterator<String> extractHashtagsFromLine(String line){
         List<String> result = new ArrayList();
-
         JSONObject json = new JSONObject(line);
 
         JSONObject entities = null;
         try {
             entities = json.getJSONObject("entities");
-        }catch(Exception e) {
-            
-        }
+        }catch(Exception e) { }
 
-        if(entities == null){
-            return result.iterator();
-        }
+        if(entities != null){
+            JSONArray hashtags = null;
+            try {
+                hashtags = entities.getJSONArray("hashtags");
+            }catch(Exception e) { }
 
-        JSONArray hashtags = null;
-        try {
-            hashtags = entities.getJSONArray("hashtags");
-        }catch(Exception e) {
-            
-        }
-
-        if(hashtags == null){
-            return result.iterator();
-        }
-
-        for(int i = 0; i < hashtags.length(); i++){
-            result.add(hashtags.getJSONObject(i).getString("text"));
+            if(hashtags != null){
+                for(int i = 0; i < hashtags.length(); i++){
+                    result.add(hashtags.getJSONObject(i).getString("text"));
+                }
+            }
         }
 
         return result.iterator();
     }
 
-    
     private static class TupleComparator implements Comparator<Tuple2<String, Integer>>, Serializable {
 
         @Override
@@ -89,14 +80,71 @@ public class Project {
         }
     }
 
+    public static void topK(JavaRDD<String> data, int k){
+        List<Tuple2<String, Integer>> test = data
+            .flatMap(line -> extractHashtagsFromLine(line))
+            .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
+            .reduceByKey((a, b) -> a + b)
+            .top(k, new TupleComparator());
+
+        JavaPairRDD<String, Integer> test2 = context.parallelizePairs(test);
+        System.out.println(test2.take(k));
+    }
+
+    public static Iterator<String> extractSpecificHashtagFromLine(String line, String hashtagRequired){
+        List<String> result = new ArrayList();
+        JSONObject json = new JSONObject(line);
+
+        JSONObject entities = null;
+        try {
+            entities = json.getJSONObject("entities");
+        }catch(Exception e) { }
+
+        if(entities != null){
+            JSONArray hashtags = null;
+            try {
+                hashtags = entities.getJSONArray("hashtags");
+            }catch(Exception e) { }
+
+            if(hashtags != null){
+                for(int i = 0; i < hashtags.length(); i++){
+                    if(hashtags.getJSONObject(i).getString("text").equals(hashtagRequired)){
+                        result.add(hashtags.getJSONObject(i).getString("text"));
+                    }
+                }
+            }
+        }
+
+        return result.iterator();
+    }
+
+    public static void searchNbTimesHashtag(JavaRDD<String> data, String hashtagRequired){
+        JavaPairRDD<String, Integer> test = data
+            .flatMap(line -> extractSpecificHashtagFromLine(line, hashtagRequired))
+            .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
+            .reduceByKey((a, b) -> a + b);
+
+        System.out.println(test.take(1));
+    }
+
     public static void main(String[] args) {
 
 	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
 	    context = new JavaSparkContext(conf);
         fillRessources();
+        String allRessources = concateAllRessources();
 
         //Day 01 for start
-        JavaRDD<String> lines = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
+        JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
+
+        //Topk a)
+        //int k = 10;
+        //topK(data, k);
+
+        //nb apparitions c)
+        String hashtagRequired = "BBB20";
+        searchNbTimesHashtag(data, hashtagRequired);
+
 /*
         JavaPairRDD<String, Integer> = lines
             .flatMap(line -> Arrays.asList(line.split(",")).iterator())
@@ -112,15 +160,9 @@ public class Project {
         
         //TupleComparator tupleComparator = new TupleComparator();
 
-        List<Tuple2<String, Integer>> test = lines
-            .flatMap(line -> extractHashtagsFromLine(line))
-            .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
-            .reduceByKey((a, b) -> a + b)
-            .top(10, new TupleComparator());
+        
 
-        JavaPairRDD<String, Integer> test2 = context.parallelizePairs(test);
-
-        System.out.println(test2.take(10));
+        
 
 	    context.close();
 	}
