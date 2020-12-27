@@ -47,7 +47,17 @@ public class Project {
         return allRessources;
     }
 
-    public static JSONArray retrieveHashtag(JSONObject json){
+    private static class TupleComparator implements Comparator<Tuple2<String, Integer>>, Serializable {
+
+        @Override
+        public int compare(Tuple2<String, Integer> tuple1, Tuple2<String, Integer> tuple2) {
+            return Integer.compare(tuple1._2, tuple2._2);
+        }
+    }
+
+    /*################ RETRIEVE INFO JSON ################*/
+
+    public static JSONArray retrieveHashtags(JSONObject json){
         JSONObject entities = null;
         try {
             entities = json.getJSONObject("entities");
@@ -66,11 +76,27 @@ public class Project {
         return null;       
     }
 
+    public static String retrieveUser(JSONObject json){
+        JSONObject user = null;
+        try {
+            user = json.getJSONObject("user");
+        }catch(Exception e) { }
+
+        if(user != null){
+            String userInfo = user.getString("name");
+            return userInfo;
+        }
+        return null;
+    }
+
+    /*################ EXTRACT FROM DATA LINE ################*/
+
     public static Iterator<String> extractHashtagsFromLine(String line){
         List<String> result = new ArrayList();
+
         JSONObject json = new JSONObject(line);
 
-        JSONArray hashtags = retrieveHashtag(json);
+        JSONArray hashtags = retrieveHashtags(json);
         if(hashtags != null){
             for(int i = 0; i < hashtags.length(); i++){
                 result.add(hashtags.getJSONObject(i).getString("text"));
@@ -80,31 +106,42 @@ public class Project {
         return result.iterator();
     }
 
-    public static Iterator<String> extractSpecificHashtagFromLine(String line, String hashtagRequired){
+    public static Iterator<String> extractUserUsedHashtag(String line){
         List<String> result = new ArrayList();
+
         JSONObject json = new JSONObject(line);
 
-        JSONArray hashtags = retrieveHashtag(json);
-        if(hashtags != null){
-            for(int i = 0; i < hashtags.length(); i++){
-                if(hashtags.getJSONObject(i).getString("text").equals(hashtagRequired)){
-                    result.add(hashtags.getJSONObject(i).getString("text"));
-                }
+        JSONArray hashtags = retrieveHashtags(json);
+        if(hashtags != null && hashtags.length() > 0){
+            String user = retrieveUser(json);
+            if(user != null){
+                result.add(user);
             }
         }
-
         return result.iterator();
     }
 
-    private static class TupleComparator implements Comparator<Tuple2<String, Integer>>, Serializable {
+    public static Iterator<Tuple2<String, String>> extractTupleUserHashtagFromLine(String line){
+        List<Tuple2<String, String>> result = new ArrayList();
+        JSONObject json = new JSONObject(line);
 
-        @Override
-        public int compare(Tuple2<String, Integer> tuple1, Tuple2<String, Integer> tuple2) {
-            return Integer.compare(tuple1._2, tuple2._2);
+        JSONArray hashtags = retrieveHashtags(json);
+        String user = retrieveUser(json);
+        if(hashtags != null && user != null){
+            for(int i = 0; i < hashtags.length(); i++){
+                String hashtag = hashtags.getJSONObject(i).getString("text");
+                Tuple2<String, String> tuple = new Tuple2<String, String>(user, hashtags.getJSONObject(i).getString("text"));
+                result.add(tuple);
+            }
         }
+        return result.iterator();
     }
 
-    public static void topK(JavaRDD<String> data, int k){
+    /*################ RDDs functions ################*/
+
+    /*Hashtag a)*/
+    public static void topkHashtags(JavaRDD<String> data, int k){
+
         List<Tuple2<String, Integer>> test = data
             .flatMap(line -> extractHashtagsFromLine(line))
             .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
@@ -115,50 +152,64 @@ public class Project {
         System.out.println(test2.take(k));
     }
 
-    public static void searchNbTimesHashtag(JavaRDD<String> data, String hashtagRequired){
+    /*Hashtag c)*/
+    public static void occurencesHashtags(JavaRDD<String> data){
+
         JavaPairRDD<String, Integer> test = data
-            .flatMap(line -> extractSpecificHashtagFromLine(line, hashtagRequired))
+            .flatMap(line -> extractHashtagsFromLine(line))
             .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
             .reduceByKey((a, b) -> a + b);
 
-        System.out.println(test.take(1));
+        System.out.println(test.take(10));
+    }
+
+    /*Hashtag d)*/
+    public static void usedHashtagsUsers(JavaRDD<String> data){
+
+        JavaRDD<String> test = data
+            .flatMap(line -> extractUserUsedHashtag(line))
+            .distinct();
+
+        System.out.println(test.take(10));
+    }
+
+    /*User a)*/
+    public static void hashtagListForUser(JavaRDD<String> data){
+        JavaRDD<Tuple2<String, String>> test = data
+            .flatMap(line -> extractTupleUserHashtagFromLine(line));
+
+        JavaPairRDD<String, String> test2 = JavaPairRDD.fromJavaRDD(test)
+            .distinct()
+            .reduceByKey((a, b) -> a + "," + b);
+        
+        System.out.println(test2.take(100));
     }
 
     public static void main(String[] args) {
-
 	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
 	    context = new JavaSparkContext(conf);
         fillRessources();
         String allRessources = concateAllRessources();
 
-        //Day 01 for start
+        //Day 01 to start
         JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
 
         //Topk a)
         //int k = 10;
-        //topK(data, k);
+        //topkHashtags(data, k);
+
+        //Topk b)
+        //int k =10;
+        //topKHashtags(data, k);
 
         //nb apparitions c)
-        String hashtagRequired = "BBB20";
-        searchNbTimesHashtag(data, hashtagRequired);
+        //occurencesHashtags(data);
 
-/*
-        JavaPairRDD<String, Integer> = lines
-            .flatMap(line -> Arrays.asList(line.split(",")).iterator())
-            .mapToPair(hashtag -> new Tuple2<>(hashtag, 1))
-            .reduceByKey((a, b) -> a + b)
-            .top(10);*/
+        //hashtags user d)
+        //usedHashtagsUsers(data);
 
-        //JavaRDD<String> test = lines.flatMap(line -> Arrays.asList(line.split(",")).iterator());
-        //JavaRDD<String> tryt = test.filter(line -> line.contains("hashtags"));
-
-        //System.out.println(lines.take(3));
-
-        
-        //TupleComparator tupleComparator = new TupleComparator();
-
-        
-
+        //user a)
+        hashtagListForUser(data);
         
 
 	    context.close();
