@@ -93,7 +93,6 @@ public class Project {
 
     public static Iterator<String> extractHashtagsFromLine(String line){
         List<String> result = new ArrayList();
-
         JSONObject json = new JSONObject(line);
 
         JSONArray hashtags = retrieveHashtags(json);
@@ -108,7 +107,6 @@ public class Project {
 
     public static Iterator<String> extractUserUsedHashtag(String line){
         List<String> result = new ArrayList();
-
         JSONObject json = new JSONObject(line);
 
         JSONArray hashtags = retrieveHashtags(json);
@@ -130,7 +128,7 @@ public class Project {
         if(hashtags != null && user != null){
             for(int i = 0; i < hashtags.length(); i++){
                 String hashtag = hashtags.getJSONObject(i).getString("text");
-                Tuple2<String, String> tuple = new Tuple2<String, String>(user, hashtags.getJSONObject(i).getString("text"));
+                Tuple2<String, String> tuple = new Tuple2<String, String>(user, hashtag);
                 result.add(tuple);
             }
         }
