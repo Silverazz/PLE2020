@@ -47,10 +47,7 @@ public class Project {
         return allRessources;
     }
 
-    public static Iterator<String> extractHashtagsFromLine(String line){
-        List<String> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
-
+    public static JSONArray retrieveHashtag(JSONObject json){
         JSONObject entities = null;
         try {
             entities = json.getJSONObject("entities");
@@ -63,7 +60,34 @@ public class Project {
             }catch(Exception e) { }
 
             if(hashtags != null){
-                for(int i = 0; i < hashtags.length(); i++){
+                return hashtags;
+            }
+        }
+        return null;       
+    }
+
+    public static Iterator<String> extractHashtagsFromLine(String line){
+        List<String> result = new ArrayList();
+        JSONObject json = new JSONObject(line);
+
+        JSONArray hashtags = retrieveHashtag(json);
+        if(hashtags != null){
+            for(int i = 0; i < hashtags.length(); i++){
+                result.add(hashtags.getJSONObject(i).getString("text"));
+            }
+        }
+
+        return result.iterator();
+    }
+
+    public static Iterator<String> extractSpecificHashtagFromLine(String line, String hashtagRequired){
+        List<String> result = new ArrayList();
+        JSONObject json = new JSONObject(line);
+
+        JSONArray hashtags = retrieveHashtag(json);
+        if(hashtags != null){
+            for(int i = 0; i < hashtags.length(); i++){
+                if(hashtags.getJSONObject(i).getString("text").equals(hashtagRequired)){
                     result.add(hashtags.getJSONObject(i).getString("text"));
                 }
             }
@@ -89,33 +113,6 @@ public class Project {
 
         JavaPairRDD<String, Integer> test2 = context.parallelizePairs(test);
         System.out.println(test2.take(k));
-    }
-
-    public static Iterator<String> extractSpecificHashtagFromLine(String line, String hashtagRequired){
-        List<String> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
-
-        JSONObject entities = null;
-        try {
-            entities = json.getJSONObject("entities");
-        }catch(Exception e) { }
-
-        if(entities != null){
-            JSONArray hashtags = null;
-            try {
-                hashtags = entities.getJSONArray("hashtags");
-            }catch(Exception e) { }
-
-            if(hashtags != null){
-                for(int i = 0; i < hashtags.length(); i++){
-                    if(hashtags.getJSONObject(i).getString("text").equals(hashtagRequired)){
-                        result.add(hashtags.getJSONObject(i).getString("text"));
-                    }
-                }
-            }
-        }
-
-        return result.iterator();
     }
 
     public static void searchNbTimesHashtag(JavaRDD<String> data, String hashtagRequired){
