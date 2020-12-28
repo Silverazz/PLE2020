@@ -105,7 +105,7 @@ public class Project {
         return result.iterator();
     }
 
-    public static Iterator<String> extractUserUsedHashtag(String line){
+    public static Iterator<String> extractUserUsedHashtagFromLine(String line){
         List<String> result = new ArrayList();
         JSONObject json = new JSONObject(line);
 
@@ -131,6 +131,28 @@ public class Project {
                 Tuple2<String, String> tuple = new Tuple2<String, String>(user, hashtag);
                 result.add(tuple);
             }
+        }
+        return result.iterator();
+    }
+
+    public static Iterator<String> extractUserFromLine(String line){
+        List<String> result = new ArrayList();
+        JSONObject json = new JSONObject(line);
+
+        String user = retrieveUser(json);
+        if(user != null){
+            result.add(user);
+        }
+        return result.iterator();
+    }
+
+    public static Iterator<String> extractLangFromLine(String line){
+        List<String> result = new ArrayList();
+        JSONObject json = new JSONObject(line);
+
+        String lang = json.getString("lang");
+        if(lang != null){
+            result.add(lang);
         }
         return result.iterator();
     }
@@ -165,7 +187,7 @@ public class Project {
     public static void usedHashtagsUsers(JavaRDD<String> data){
 
         JavaRDD<String> test = data
-            .flatMap(line -> extractUserUsedHashtag(line))
+            .flatMap(line -> extractUserUsedHashtagFromLine(line))
             .distinct();
 
         System.out.println(test.take(10));
@@ -181,6 +203,26 @@ public class Project {
             .reduceByKey((a, b) -> a + "," + b);
         
         System.out.println(test2.take(100));
+    }
+
+    /*User b)*/
+    public static void nbTweetsUser(JavaRDD<String> data){
+        JavaPairRDD<String, Integer> test = data
+            .flatMap(line -> extractUserFromLine(line))
+            .mapToPair(user -> new Tuple2<String, Integer>(user, 1))
+            .reduceByKey((a, b) -> a + b);
+
+        System.out.println(test.take(100));
+    }
+
+    /*User c)*/
+    public static void nbTweetsLang(JavaRDD<String> data){
+        JavaPairRDD<String, Integer> test = data
+            .flatMap(line -> extractLangFromLine(line))
+            .mapToPair(user -> new Tuple2<String, Integer>(user, 1))
+            .reduceByKey((a, b) -> a + b);
+    
+        System.out.println(test.take(100));
     }
 
     public static void main(String[] args) {
@@ -207,7 +249,13 @@ public class Project {
         //usedHashtagsUsers(data);
 
         //user a)
-        hashtagListForUser(data);
+        //hashtagListForUser(data);
+
+        //user b)
+        //nbTweetsUser(data);
+
+        //user c)
+        nbTweetsLang(data);
         
 
 	    context.close();
