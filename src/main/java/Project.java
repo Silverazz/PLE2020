@@ -195,14 +195,11 @@ public class Project {
 
     /*User a)*/
     public static void hashtagListForUser(JavaRDD<String> data){
-        JavaRDD<Tuple2<String, String>> test = data
-            .flatMap(line -> extractTupleUserHashtagFromLine(line));
-
-        JavaPairRDD<String, String> test2 = JavaPairRDD.fromJavaRDD(test)
+        JavaPairRDD <String, Iterable<String>> test = data
+            .flatMapToPair( line -> extractTupleUserHashtagFromLine(line))
             .distinct()
-            .reduceByKey((a, b) -> a + "," + b);
-        
-        System.out.println(test2.take(100));
+            .groupByKey();
+        System.out.println(test.take(100));
     }
 
     /*User b)*/
@@ -252,10 +249,10 @@ public class Project {
         //hashtagListForUser(data);
 
         //user b)
-        //nbTweetsUser(data);
+        nbTweetsUser(data);
 
         //user c)
-        nbTweetsLang(data);
+        //nbTweetsLang(data);
         
 
 	    context.close();
