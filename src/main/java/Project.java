@@ -47,10 +47,18 @@ public class Project {
         return allRessources;
     }
 
-    private static class TupleComparator implements Comparator<Tuple2<String, Integer>>, Serializable {
+    private static class TupleComparatorString implements Comparator<Tuple2<String, Integer>>, Serializable {
 
         @Override
         public int compare(Tuple2<String, Integer> tuple1, Tuple2<String, Integer> tuple2) {
+            return Integer.compare(tuple1._2, tuple2._2);
+        }
+    }
+
+    private static class TupleComparatorListString implements Comparator<Tuple2<List<String>, Integer>>, Serializable {
+
+        @Override
+        public int compare(Tuple2<List<String>, Integer> tuple1, Tuple2<List<String>, Integer> tuple2) {
             return Integer.compare(tuple1._2, tuple2._2);
         }
     }
@@ -220,6 +228,31 @@ public class Project {
         return result.iterator();
     }
 
+    public static Iterator<List<String>> extractHashtagTriplets(String line){
+        List<List<String>> result = new ArrayList();
+        List<String> hashtagsList = new ArrayList();  
+
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
+
+        if(json != null){
+            JSONArray hashtags = retrieveHashtags(json);
+            if(hashtags != null){
+                if(hashtags.length() == 3){ 
+                    for(int i = 0; i < hashtags.length(); i++){
+                        hashtagsList.add(hashtags.getJSONObject(i).getString("text"));
+                    }
+                    hashtagsList.sort(Comparator.comparing(String::toString));
+                    result.add(hashtagsList);
+                }
+            }
+        }
+
+        return result.iterator();
+    }
+
     /*################ RDDs functions ################*/
 
     /*Hashtag a)*/
@@ -229,7 +262,7 @@ public class Project {
             .flatMap(line -> extractHashtagsFromLine(line))
             .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
             .reduceByKey((a, b) -> a + b)
-            .top(k, new TupleComparator());
+            .top(k, new TupleComparatorString());
 
         JavaPairRDD<String, Integer> test2 = context.parallelizePairs(test);
         System.out.println(test2.take(k));
@@ -296,6 +329,18 @@ public class Project {
         System.out.println(test.take(100));
     }
 
+    /*Influenceur b)*/
+    public static void topkHashtagTriplets(JavaRDD<String> data, int k){
+        List<Tuple2<List<String>, Integer>> test = data
+            .flatMap(line -> extractHashtagTriplets(line))
+            .mapToPair(hashtagTriplet -> new Tuple2<List<String>, Integer>(hashtagTriplet, 1))
+            .reduceByKey((a, b) -> a + b)
+            .top(k, new TupleComparatorListString());
+
+        JavaPairRDD<List<String>, Integer> test2 = context.parallelizePairs(test);
+        System.out.println(test2.take(k));
+    }
+
     public static void main(String[] args) {
 	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
 	    context = new JavaSparkContext(conf);
@@ -303,7 +348,10 @@ public class Project {
         String allRessources = concateAllRessources();
 
         //Day 01 to start
-        JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
+        //JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
+
+        //Day 01 full data to try
+        JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
 
         //Topk a)
         //int k = 10;
@@ -311,7 +359,7 @@ public class Project {
 
         //Topk b)
         //JavaRDD<String> allData = context.textFile(allRessources);
-        //int k =10;
+        //int k = 10;
         //topKHashtags(allData, k);
 
         //nb apparitions c)
@@ -330,7 +378,11 @@ public class Project {
         //nbTweetsLang(data);
 
         //influenceurs a)
-        hashtagTripletsUsers(data);
+        //hashtagTripletsUsers(data);
+
+        //influenceurs b)
+        int k = 10;
+        topkHashtagTriplets(data, k);
 
 	    context.close();
 	}
