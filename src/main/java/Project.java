@@ -93,12 +93,17 @@ public class Project {
 
     public static Iterator<String> extractHashtagsFromLine(String line){
         List<String> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
 
-        JSONArray hashtags = retrieveHashtags(json);
-        if(hashtags != null){
-            for(int i = 0; i < hashtags.length(); i++){
-                result.add(hashtags.getJSONObject(i).getString("text"));
+        if(json != null){
+            JSONArray hashtags = retrieveHashtags(json);
+            if(hashtags != null){
+                for(int i = 0; i < hashtags.length(); i++){
+                    result.add(hashtags.getJSONObject(i).getString("text"));
+                }
             }
         }
 
@@ -107,53 +112,111 @@ public class Project {
 
     public static Iterator<String> extractUserUsedHashtagFromLine(String line){
         List<String> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
 
-        JSONArray hashtags = retrieveHashtags(json);
-        if(hashtags != null && hashtags.length() > 0){
-            String user = retrieveUser(json);
-            if(user != null){
-                result.add(user);
+        if(json != null){
+            JSONArray hashtags = retrieveHashtags(json);
+            if(hashtags != null && hashtags.length() > 0){
+                String user = retrieveUser(json);
+                if(user != null){
+                    result.add(user);
+                }
             }
         }
+
         return result.iterator();
     }
 
     public static Iterator<Tuple2<String, String>> extractTupleUserHashtagFromLine(String line){
         List<Tuple2<String, String>> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
 
-        JSONArray hashtags = retrieveHashtags(json);
-        String user = retrieveUser(json);
-        if(hashtags != null && user != null){
-            for(int i = 0; i < hashtags.length(); i++){
-                String hashtag = hashtags.getJSONObject(i).getString("text");
-                Tuple2<String, String> tuple = new Tuple2<String, String>(user, hashtag);
-                result.add(tuple);
+        if(json != null){
+            JSONArray hashtags = retrieveHashtags(json);
+            String user = retrieveUser(json);
+            if(hashtags != null && user != null){
+                for(int i = 0; i < hashtags.length(); i++){
+                    String hashtag = hashtags.getJSONObject(i).getString("text");
+                    Tuple2<String, String> tuple = new Tuple2<String, String>(user, hashtag);
+                    result.add(tuple);
+                }
             }
         }
+
         return result.iterator();
     }
 
     public static Iterator<String> extractUserFromLine(String line){
         List<String> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
 
-        String user = retrieveUser(json);
-        if(user != null){
-            result.add(user);
+        if(json != null){
+            String user = retrieveUser(json);
+            if(user != null){
+                result.add(user);
+            }
         }
+
         return result.iterator();
     }
 
     public static Iterator<String> extractLangFromLine(String line){
         List<String> result = new ArrayList();
-        JSONObject json = new JSONObject(line);
+        
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
 
-        String lang = json.getString("lang");
-        if(lang != null){
-            result.add(lang);
+        if(json != null){
+            String lang = null;
+            try{
+                lang = json.getString("lang");
+            }catch(Exception e) { }
+
+            if(lang != null){
+                result.add(lang);
+            }
         }
+
+        return result.iterator();
+    }
+
+    public static Iterator<Tuple2<List<String>, String>> extractHashtagTripletsAndUsers(String line){
+        List<Tuple2<List<String>, String>> result = new ArrayList();
+        List<String> hashtagsList = new ArrayList();
+
+        JSONObject json = null;
+        try {
+            json = new JSONObject(line);
+        }catch(Exception e){ }
+
+        if(json != null){
+            JSONArray hashtags = retrieveHashtags(json);
+            if(hashtags != null){
+                if(hashtags.length() == 3){ 
+                    String user = retrieveUser(json);
+                    if(user != null){
+                        for(int i = 0; i < hashtags.length(); i++){
+                            hashtagsList.add(hashtags.getJSONObject(i).getString("text"));
+                        }
+                        hashtagsList.sort(Comparator.comparing(String::toString));
+                        Tuple2<List<String>, String> tuple = new Tuple2<List<String>, String>(hashtagsList, user);
+                        result.add(tuple);
+                    }
+                }
+            }
+        }
+
         return result.iterator();
     }
 
@@ -199,6 +262,7 @@ public class Project {
             .flatMapToPair( line -> extractTupleUserHashtagFromLine(line))
             .distinct()
             .groupByKey();
+
         System.out.println(test.take(100));
     }
 
@@ -222,6 +286,16 @@ public class Project {
         System.out.println(test.take(100));
     }
 
+    /*Influenceur a)*/
+    public static void hashtagTripletsUsers(JavaRDD<String> data){
+        JavaPairRDD <List<String>, Iterable<String>> test = data
+            .flatMapToPair( line -> extractHashtagTripletsAndUsers(line))
+            .distinct()
+            .groupByKey();
+
+        System.out.println(test.take(100));
+    }
+
     public static void main(String[] args) {
 	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
 	    context = new JavaSparkContext(conf);
@@ -233,11 +307,12 @@ public class Project {
 
         //Topk a)
         //int k = 10;
-        //topkHashtags(data, k);
+        //topkHashtags(allData, k);
 
         //Topk b)
+        //JavaRDD<String> allData = context.textFile(allRessources);
         //int k =10;
-        //topKHashtags(data, k);
+        //topKHashtags(allData, k);
 
         //nb apparitions c)
         //occurencesHashtags(data);
@@ -249,11 +324,13 @@ public class Project {
         //hashtagListForUser(data);
 
         //user b)
-        nbTweetsUser(data);
+        //nbTweetsUser(data);
 
         //user c)
         //nbTweetsLang(data);
-        
+
+        //influenceurs a)
+        hashtagTripletsUsers(data);
 
 	    context.close();
 	}
