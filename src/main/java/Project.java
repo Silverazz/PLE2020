@@ -3,7 +3,15 @@ package bigdata;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
+
+import java.io.IOException;
 import java.util.*;
 
 public class Project {
@@ -32,9 +40,9 @@ public class Project {
         return allRessources;
     }
 
-    public static void main(String[] args) {
-	    SparkConf conf = new SparkConf().setAppName("Projet PLE 2020");
-	    context = new JavaSparkContext(conf);
+    public static void main(String[] args) throws IOException{
+	    SparkConf sparkConf = new SparkConf().setAppName("Projet PLE 2020");
+	    context = new JavaSparkContext(sparkConf);
         fillRessources();
         String allRessources = concateAllRessources();
 
@@ -42,14 +50,29 @@ public class Project {
         // JavaRDD<String> allData = context.textFile(allRessources);
         // JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
 
-        TopKHashtag.runJob(context, data, 10);
-        HashtagListForUser.runJob(context, data);
-        HashtagTripletUser.runJob(context, data);
-        NbTweetLang.runJob(context, data);
-        NbTweetUser.runJob(context, data);
-        OccurenceHashtag.runJob(context, data);
-        TopKHashtagTriplet.runJob(context, data, 10);
-        UsedHashtagUser.runJob(context, data);
+        // Instantiating configuration class
+        Configuration hbaseConf = HBaseConfiguration.create();
+
+        // Instantiating HBaseAdmin class
+        HBaseAdmin admin = new HBaseAdmin(hbaseConf);
+
+        // Verifying the existance of the table
+        boolean bool = admin.tableExists("al-jda-database");
+        if(!bool){
+            HTableDescriptor tableDescriptor = new
+            HTableDescriptor(TableName.valueOf("al-jda-database"));
+            tableDescriptor.addFamily(new HColumnDescriptor("updates"));
+            admin.createTable(tableDescriptor);
+        }
+
+        // TopKHashtag.runJob(context, hbaseConf, admin, data, 10);
+        // HashtagListForUser.runJob(context, data);
+        // HashtagTripletUser.runJob(context, data);
+        NbTweetLang.runJob(context, hbaseConf, admin, data);
+        // NbTweetUser.runJob(context, data);
+        // OccurenceHashtag.runJob(context, data);
+        // TopKHashtagTriplet.runJob(context, data, 10);
+        // UsedHashtagUser.runJob(context, data);
 
 	    context.close();
 	}
