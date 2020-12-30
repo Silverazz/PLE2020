@@ -3,6 +3,7 @@ package bigdata;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -46,9 +47,9 @@ public class Project {
         fillRessources();
         String allRessources = concateAllRessources();
 
-        JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
+        //JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
         // JavaRDD<String> allData = context.textFile(allRessources);
-        // JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
+         JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
 
         // Instantiating configuration class
         Configuration hbaseConf = HBaseConfiguration.create();
@@ -68,11 +69,12 @@ public class Project {
         // TopKHashtag.runJob(context, hbaseConf, admin, data, 10);
         // HashtagListForUser.runJob(context, data);
         // HashtagTripletUser.runJob(context, data);
-        NbTweetLang.runJob(context, hbaseConf, admin, data);
+        //NbTweetLang.runJob(context, hbaseConf, admin, data);
         // NbTweetUser.runJob(context, data);
         // OccurenceHashtag.runJob(context, data);
         // TopKHashtagTriplet.runJob(context, data, 10);
         // UsedHashtagUser.runJob(context, data);
+        TopKInfluenceurs.runJob(context, data, 10);
 
 	    context.close();
 	}
