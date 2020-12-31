@@ -27,13 +27,6 @@ public abstract class SparkJob {
         }
     }
 
-    protected static class TupleComparatorListStringAndString implements Comparator<Tuple2<Tuple2<List<String>, String>, Integer>>, Serializable {
-        @Override
-        public int compare(Tuple2<Tuple2<List<String>, String>, Integer> tuple1, Tuple2<Tuple2<List<String>, String>, Integer> tuple2) {
-            return Integer.compare(tuple1._2, tuple2._2);
-        }
-    }
-
     protected static JSONArray retrieveHashtags(JSONObject json){
         JSONObject entities = null;
         try {

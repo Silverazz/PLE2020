@@ -79,15 +79,14 @@ public class TopKInfluenceurs extends SparkJob{
 
         //HashtagTriplets - User
         JavaPairRDD <List<String>, String> test3 = data
-            .flatMapToPair( line -> extractHashtagTripletsAndUsers(line))
-            .distinct();
+            .flatMapToPair( line -> extractHashtagTripletsAndUsers(line));
 
         //TopKHashtagsTriplets - User
-        JavaPairRDD<List<String>, Tuple2<Optional<Integer>, String>> test4 = test2.rightOuterJoin(test3);
+        JavaPairRDD<List<String>, Tuple2<Integer, String>> test4 = test2.join(test3);
 
         //((TopKHashtagsTriplets, User), 1) - reduce - topk
         JavaPairRDD<List<String>, Tuple2<String, Integer>> test5 = test4
-            .mapToPair((Tuple2<List<String>, Tuple2<Optional<Integer>, String>> tuple) -> new Tuple2<>(new Tuple2<>(tuple._1, tuple._2._2), 1))
+            .mapToPair((Tuple2<List<String>, Tuple2<Integer, String>> tuple) -> new Tuple2<>(new Tuple2<>(tuple._1, tuple._2._2), 1))
             .reduceByKey((a, b) -> a + b)
             .mapToPair((Tuple2<Tuple2<List<String>, String>, Integer> tuple) -> new Tuple2<>(tuple._1._1, new Tuple2<>(tuple._1._2, tuple._2)))
             .reduceByKey((a,b) -> {
@@ -98,15 +97,9 @@ public class TopKInfluenceurs extends SparkJob{
                   return b;
                 }
               });
-
-        //JavaPairRDD<Tuple2<List<String>, String>, Integer> test6 = context.parallelizePairs(test5);
+              
 
         System.out.println(test5.take(k));
 
-        //List<Tuple2<Tuple2<List<String>, String>, Integer>> test5 = test4
-        //    .mapToPair(tuple -> new Tuple2<Tuple2<List<String>, String>, Integer>(tuple, 1));
-
-
-        //System.out.println(test5.take(k));
     }
 }
