@@ -10,7 +10,7 @@ import scala.Tuple2;
 
 import java.util.*;
 
-public class TopKInfluenceurs extends SparkJob{
+public class MostTweetsInfluenceurs extends SparkJob{
 
     public static Iterator<List<String>> extractHashtagTriplets(String line){
         List<List<String>> result = new ArrayList();

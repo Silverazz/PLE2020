@@ -74,7 +74,8 @@ public class Project {
         // OccurenceHashtag.runJob(context, data);
         // TopKHashtagTriplet.runJob(context, data, 10);
         // UsedHashtagUser.runJob(context, data);
-        TopKInfluenceurs.runJob(context, data, 10);
+        //MostTweetsInfluenceurs.runJob(context, data, 10);
+        FakeInfluenceur.runJob(context, data);
 
 	    context.close();
 	}

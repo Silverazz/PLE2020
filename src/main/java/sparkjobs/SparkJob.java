@@ -58,4 +58,26 @@ public abstract class SparkJob {
         }
         return null;
     }
+
+    public static int retrieveNbFollowers(JSONObject json){
+        JSONObject user = null;
+        try {
+            user = json.getJSONObject("user");
+        }catch(Exception e) { }
+
+        if(user != null){
+            Integer nbFollowers = user.getInt("followers_count");
+            return nbFollowers; 
+        }
+        return -1;
+    }
+
+    public static int retrieveNbRetweets(JSONObject json){
+        int nbReweets = -1;
+        try {
+            nbReweets = json.getInt("retweet_count");
+        }catch(Exception e) { }
+
+        return nbReweets;
+    }
 }
