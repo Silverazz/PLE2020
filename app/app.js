@@ -1,21 +1,19 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+cors = require('cors');
+
 const { request } = require('express');
 
 const app = express();
 
-
-// Moteur de template
-app.set('view engine', 'ejs');
-
 // Middleware
-app.use('/assests', express.static('public'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(cors());
 
 // Routes
 app.get('/', (req,resp) => {
-    resp.render('index');
+    resp.send('bouyakaaaaa');
 });
 
 console.log('Application is running on port 8888!');
