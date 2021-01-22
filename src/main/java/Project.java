@@ -48,8 +48,8 @@ public class Project {
         String allRessources = concateAllRessources();
 
         //JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
-        // JavaRDD<String> allData = context.textFile(allRessources);
-         JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
+        JavaRDD<String> allData = context.textFile(allRessources);
+        // JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
 
         // Instantiating configuration class
         Configuration hbaseConf = HBaseConfiguration.create();
@@ -75,7 +75,8 @@ public class Project {
         // TopKHashtagTriplet.runJob(context, data, 10);
         // UsedHashtagUser.runJob(context, data);
         //MostTweetsInfluenceurs.runJob(context, data, 10);
-        FakeInfluenceur.runJob(context, data);
+        //FakeInfluenceur.runJob(context, data);
+        HashtagMostFollowers.runJob(context, allData);
 
 	    context.close();
 	}
