@@ -159,21 +159,17 @@ public class RetagTweets extends SparkJob{
                 String[] textSplitB = textFromTweetB.split(" ");
                 List<String> wordsListB = new ArrayList<String>(Arrays.asList(textSplitB));
 
-                List<String> wordsListTmp = new ArrayList<>(wordsListA);
-                //all elements in A which are not in B
-                wordsListTmp.removeAll(wordsListB);
-                
-                if(wordsListTmp.size() > 0){
-                    String hashtagToAdd = wordsListTmp.get(0);
-                    for(int i = 0; i < wordsListA.size(); i++){
-                        if(wordsListA.get(i) == hashtagToAdd){
+                for(int i = 0; i < wordsListA.size(); i++){
+                    String hashtagToAdd = wordsListA.get(i);
+                    if(hashtagToAdd.length() > 0){
+                        if(hashtagToAdd != wordsListB.get(i) && hashtagToAdd.charAt(0) == '#'){
                             wordsListB.set(i, hashtagToAdd);
                         }
                     }
-
-                    String newText = String.join(" ", wordsListB);
-                    jsonB.put("text", newText);
                 }
+
+                String newText = String.join(" ", wordsListB);
+                jsonB.put("text", newText);
             }
 
             JSONArray hashtagsArrayA = retrieveHashtags(jsonA);
@@ -216,6 +212,6 @@ public class RetagTweets extends SparkJob{
             .mapToPair((Tuple2<String, Tuple2<Integer, String>> tuple) -> replaceKeyByTweetIdAndModifyTweet(tuple))
             .reduceByKey((a,b) -> mergeTweets(a, b));
 
-        System.out.println(tweetIDAndTweetModified.take(2));
+        System.out.println(tweetIDAndTweetModified.take(4));
     }
 }
