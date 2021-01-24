@@ -39,9 +39,13 @@ public class RetagTweets extends SparkJob{
         String[] textSplit = text.split(" ");
         List<String> wordsList = new ArrayList<String>(Arrays.asList(textSplit));
 
-        for(String word: wordsList){
-            if(word.charAt(0) == '#' || word.length() == 1){
-                wordsList.remove(word);
+        Iterator<String> it = wordsList.iterator();
+        while(it.hasNext()) {
+            String word = it.next();
+            if(word.length() > 0){
+                if(word.charAt(0) == '#' || word.length() == 1){
+                    it.remove();
+                }
             }
         }
 
@@ -197,7 +201,7 @@ public class RetagTweets extends SparkJob{
         return jsonB.toString();
     }
     
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data, int k){
+    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
 
         JavaPairRDD<String, Integer> hashtagsTweets = data
             .flatMapToPair(line -> extractHashtagsFromLine(line))
@@ -212,6 +216,6 @@ public class RetagTweets extends SparkJob{
             .mapToPair((Tuple2<String, Tuple2<Integer, String>> tuple) -> replaceKeyByTweetIdAndModifyTweet(tuple))
             .reduceByKey((a,b) -> mergeTweets(a, b));
 
-        System.out.println(tweetIDAndTweetModified.take(10));
+        System.out.println(tweetIDAndTweetModified.take(2));
     }
 }

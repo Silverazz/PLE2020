@@ -77,7 +77,7 @@ public class Project {
         //MostTweetsInfluenceurs.runJob(context, data, 10);
         //FakeInfluenceur.runJob(context, data);
         //HashtagMostFollowers.runJob(context, allData);
-        RetagTweets.runJob(context, data, 10);
+        RetagTweets.runJob(context, data);
 
 	    context.close();
 	}
