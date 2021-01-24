@@ -88,4 +88,14 @@ public abstract class SparkJob {
 
         return nbReweets;
     }
+
+    public static Long retrieveTweetId(JSONObject json){
+        long tweetId = (long) -1;
+        try {
+            tweetId = json.getLong("id");
+        }catch(Exception e) { }
+
+        return tweetId;
+    }
+
 }

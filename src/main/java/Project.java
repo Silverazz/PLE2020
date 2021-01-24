@@ -47,24 +47,24 @@ public class Project {
         fillRessources();
         String allRessources = concateAllRessources();
 
-        //JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
-        JavaRDD<String> allData = context.textFile(allRessources);
-        // JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
+        JavaRDD<String> data = context.textFile("/raw_data/tweet_01_03_2020_first10000.nljson");
+        //JavaRDD<String> allData = context.textFile(allRessources);
+        //JavaRDD<String> data = context.textFile(RESSOURCES_URLS[0]);
 
         // Instantiating configuration class
-        Configuration hbaseConf = HBaseConfiguration.create();
+        //Configuration hbaseConf = HBaseConfiguration.create();
 
         // Instantiating HBaseAdmin class
-        HBaseAdmin admin = new HBaseAdmin(hbaseConf);
+        ////HBaseAdmin admin = new HBaseAdmin(hbaseConf);
 
         // Verifying the existance of the table
-        boolean bool = admin.tableExists("al-jda-database");
+        /*boolean bool = admin.tableExists("al-jda-database");
         if(!bool){
             HTableDescriptor tableDescriptor = new
             HTableDescriptor(TableName.valueOf("al-jda-database"));
             tableDescriptor.addFamily(new HColumnDescriptor("updates"));
             admin.createTable(tableDescriptor);
-        }
+        }*/
 
         // TopKHashtag.runJob(context, hbaseConf, admin, data, 10);
         // HashtagListForUser.runJob(context, data);
@@ -76,7 +76,8 @@ public class Project {
         // UsedHashtagUser.runJob(context, data);
         //MostTweetsInfluenceurs.runJob(context, data, 10);
         //FakeInfluenceur.runJob(context, data);
-        HashtagMostFollowers.runJob(context, allData);
+        //HashtagMostFollowers.runJob(context, allData);
+        RetagTweets.runJob(context, data, 10);
 
 	    context.close();
 	}
