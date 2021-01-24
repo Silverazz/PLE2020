@@ -105,8 +105,11 @@ public class RetagTweets extends SparkJob{
                     String[] textSplit = textFromTweet.split(" ");
                     List<String> wordsList = new ArrayList<String>(Arrays.asList(textSplit));
 
-                    int index = wordsList.indexOf(hashtagToAdd);
-                    wordsList.set(index, "#" + hashtagToAdd);
+                    for(int i = 0; i < wordsList.size(); i++){
+                        if(wordsList.get(i) == hashtagToAdd){
+                            wordsList.set(i, "#" + hashtagToAdd);
+                        }
+                    }
 
                     String newText = String.join(" ", wordsList);
                     json.put("text", newText);
