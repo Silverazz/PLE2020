@@ -159,12 +159,17 @@ public class RetagTweets extends SparkJob{
                 //all elements in A which are not in B
                 wordsListTmp.removeAll(wordsListB);
                 
-                String hashtagToAdd = wordsListTmp.get(0);
-                int index = wordsListA.indexOf(hashtagToAdd);
-                wordsListB.set(index, "#" + hashtagToAdd);
+                if(wordsListTmp.size() > 0){
+                    String hashtagToAdd = wordsListTmp.get(0);
+                    for(int i = 0; i < wordsListA.size(); i++){
+                        if(wordsListA.get(i) == hashtagToAdd){
+                            wordsListB.set(i, hashtagToAdd);
+                        }
+                    }
 
-                String newText = String.join(" ", wordsListB);
-                jsonB.put("text", newText);
+                    String newText = String.join(" ", wordsListB);
+                    jsonB.put("text", newText);
+                }
             }
 
             JSONArray hashtagsArrayA = retrieveHashtags(jsonA);
