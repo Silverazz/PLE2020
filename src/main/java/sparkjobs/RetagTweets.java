@@ -110,7 +110,7 @@ public class RetagTweets extends SparkJob{
                     List<String> wordsList = new ArrayList<String>(Arrays.asList(textSplit));
 
                     for(int i = 0; i < wordsList.size(); i++){
-                        if(wordsList.get(i) == hashtagToAdd){
+                        if(wordsList.get(i).equals(hashtagToAdd)){
                             wordsList.set(i, "#" + hashtagToAdd);
                         }
                     }
@@ -162,7 +162,7 @@ public class RetagTweets extends SparkJob{
                 for(int i = 0; i < wordsListA.size(); i++){
                     String hashtagToAdd = wordsListA.get(i);
                     if(hashtagToAdd.length() > 0){
-                        if(hashtagToAdd != wordsListB.get(i) && hashtagToAdd.charAt(0) == '#'){
+                        if(!hashtagToAdd.equals(wordsListB.get(i)) && hashtagToAdd.charAt(0) == '#'){
                             wordsListB.set(i, hashtagToAdd);
                         }
                     }
@@ -212,6 +212,6 @@ public class RetagTweets extends SparkJob{
             .mapToPair((Tuple2<String, Tuple2<Integer, String>> tuple) -> replaceKeyByTweetIdAndModifyTweet(tuple))
             .reduceByKey((a,b) -> mergeTweets(a, b));
 
-        System.out.println(tweetIDAndTweetModified.take(4));
+        System.out.println(tweetIDAndTweetModified.take(1));
     }
 }
