@@ -69,26 +69,26 @@ public class MostTweetsInfluenceurs extends SparkJob{
     public static void runJob(JavaSparkContext context, JavaRDD<String> data, int k){
 
         //TopKHashtagTriplets
-        List<Tuple2<List<String>, Integer>> test = data
+        List<Tuple2<List<String>, Long>> test = data
             .flatMap(line -> extractHashtagTriplets(line))
-            .mapToPair(hashtagTriplet -> new Tuple2<List<String>, Integer>(hashtagTriplet, 1))
+            .mapToPair(hashtagTriplet -> new Tuple2<List<String>, Long>(hashtagTriplet, 1L))
             .reduceByKey((a, b) -> a + b)
             .top(k, new TupleComparatorListString());
 
-        JavaPairRDD<List<String>, Integer> test2 = context.parallelizePairs(test);
+        JavaPairRDD<List<String>, Long> test2 = context.parallelizePairs(test);
 
         //HashtagTriplets - User
         JavaPairRDD <List<String>, String> test3 = data
             .flatMapToPair( line -> extractHashtagTripletsAndUsers(line));
 
         //TopKHashtagsTriplets - User
-        JavaPairRDD<List<String>, Tuple2<Integer, String>> test4 = test2.join(test3);
+        JavaPairRDD<List<String>, Tuple2<Long, String>> test4 = test2.join(test3);
 
         //((TopKHashtagsTriplets, User), 1) - reduce - topk
-        JavaPairRDD<List<String>, Tuple2<String, Integer>> test5 = test4
-            .mapToPair((Tuple2<List<String>, Tuple2<Integer, String>> tuple) -> new Tuple2<>(new Tuple2<>(tuple._1, tuple._2._2), 1))
+        JavaPairRDD<List<String>, Tuple2<String, Long>> test5 = test4
+            .mapToPair((Tuple2<List<String>, Tuple2<Long, String>> tuple) -> new Tuple2<>(new Tuple2<>(tuple._1, tuple._2._2), 1L))
             .reduceByKey((a, b) -> a + b)
-            .mapToPair((Tuple2<Tuple2<List<String>, String>, Integer> tuple) -> new Tuple2<>(tuple._1._1, new Tuple2<>(tuple._1._2, tuple._2)))
+            .mapToPair((Tuple2<Tuple2<List<String>, String>, Long> tuple) -> new Tuple2<>(tuple._1._1, new Tuple2<>(tuple._1._2, tuple._2)))
             .reduceByKey((a,b) -> {
                 if (a._2 > b._2){
                   return a;

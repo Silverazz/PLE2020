@@ -8,10 +8,17 @@ import scala.Tuple2;
 
 import java.util.*;
 
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+
 public class OccurenceHashtag extends SparkJob{
 
-    public static Iterator<String> extractHashtagsFromLine(String line){
-        List<String> result = new ArrayList();
+    public static Iterator<Tuple2<String, Long>> extractHashtagsFromLine(String line){
+        List<Tuple2<String, Long>> result = new ArrayList();
         JSONObject json = null;
         try {
             json = new JSONObject(line);
@@ -21,7 +28,8 @@ public class OccurenceHashtag extends SparkJob{
             JSONArray hashtags = retrieveHashtags(json);
             if(hashtags != null){
                 for(int i = 0; i < hashtags.length(); i++){
-                    result.add(hashtags.getJSONObject(i).getString("text"));
+                    String str = hashtags.getJSONObject(i).getString("text");
+                    result.add(new Tuple2<String, Long>(str, 1L));
                 }
             }
         }
@@ -29,13 +37,31 @@ public class OccurenceHashtag extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
+    public static void runJob() 
+        throws MasterNotRunningException,IOException{
 
-        JavaPairRDD<String, Integer> test = data
-            .flatMap(line -> extractHashtagsFromLine(line))
-            .mapToPair(hashtag -> new Tuple2<String, Integer>(hashtag, 1))
+        JavaPairRDD<String, Long> rdd = GlobalManager.data
+            .flatMapToPair(line -> extractHashtagsFromLine(line))
             .reduceByKey((a, b) -> a + b);
 
-        System.out.println(test.take(10));
+        System.out.println(rdd.take(10));
+
+        JavaRDD<Input<String, Long>> rddInput = rdd
+            .map(elt -> new Input<String, Long>(elt._1,elt._2));
+
+        GlobalManager.initTable("al-jda-hashtag","total");
+
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(GlobalManager.hbaseConf);
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-hashtag"))) {
+                    while (iterator.hasNext()) {
+                        Input<String, Long> input = iterator.next();
+                        Put put = new Put(Bytes.toBytes(input.getKey()));
+                        put.addColumn(Bytes.toBytes("total"), Bytes.toBytes("value"), Bytes.toBytes(input.getMyValue()));
+                        mutator.mutate(put);
+                    }
+                }
+            }
+        );
     }
 }

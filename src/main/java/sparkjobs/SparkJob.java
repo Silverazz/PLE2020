@@ -9,21 +9,37 @@ import java.io.Serializable;
 import org.json.*;
 import java.util.*;
 
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.*;
+
+import org.apache.hadoop.conf.Configuration;
+
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.TableName;
+
+
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+
+
 public abstract class SparkJob {
 
-    protected static class TupleComparatorListString implements Comparator<Tuple2<List<String>, Integer>>, Serializable {
+    protected static class TupleComparatorListString implements Comparator<Tuple2<List<String>, Long>>, Serializable {
 
         @Override
-        public int compare(Tuple2<List<String>, Integer> tuple1, Tuple2<List<String>, Integer> tuple2) {
-            return Integer.compare(tuple1._2, tuple2._2);
+        public int compare(Tuple2<List<String>, Long> tuple1, Tuple2<List<String>, Long> tuple2) {
+            return Long.compare(tuple1._2, tuple2._2);
         }
     }
 
-    protected static class TupleComparatorString implements Comparator<Tuple2<String, Integer>>, Serializable {
+    protected static class TupleComparatorString implements Comparator<Tuple2<String, Long>>, Serializable {
 
         @Override
-        public int compare(Tuple2<String, Integer> tuple1, Tuple2<String, Integer> tuple2) {
-            return Integer.compare(tuple1._2, tuple2._2);
+        public int compare(Tuple2<String, Long> tuple1, Tuple2<String, Long> tuple2) {
+            return Long.compare(tuple1._2, tuple2._2);
         }
     }
 
@@ -80,4 +96,21 @@ public abstract class SparkJob {
 
         return nbReweets;
     }
+
+    
+
+    // public static void saveRDD(JavaRDD<Input> rdd, String column, )
+
+    // rdd.foreachPartition(iterator -> {
+    //     try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+    //         BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-database"))) {
+    //             while (iterator.hasNext()) {
+    //                 MyRecord record = iterator.next();
+    //                 Put put = new Put(Bytes.toBytes(record.getKey()));
+    //                 put.addColumn(Bytes.toBytes("nbTweetLang"),Bytes.toBytes("total"), Bytes.toBytes(record.getMyValue()));
+    //                 mutator.mutate(put);
+    //             }
+    //         }
+    //     }
+    // );
 }

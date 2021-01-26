@@ -6,12 +6,9 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.json.*;
 import scala.Tuple2;
 
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.MasterNotRunningException;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import java.io.IOException;
 
@@ -23,10 +20,15 @@ import org.apache.hadoop.hbase.TableName;
 
 import java.util.*;
 
+// import org.apache.hadoop.io.IntWritable;
+// import org.apache.hadoop.io.LongWritable;
+// import org.apache.hadoop.io.Text;
+// import org.apache.hadoop.io.Writable;
+
 public class NbTweetLang extends SparkJob{
 
-    public static Iterator<Tuple2<String, Integer>> extractLangFromLine(String line){
-        List<Tuple2<String, Integer>> result = new ArrayList();
+    public static Iterator<Tuple2<String, Long>> extractLangFromLine(String line){
+        List<Tuple2<String, Long>> result = new ArrayList();
         
         JSONObject json = null;
         try {
@@ -40,70 +42,39 @@ public class NbTweetLang extends SparkJob{
             }catch(Exception e) { }
 
             if(lang != null){
-                result.add(new Tuple2<String, Integer>(lang, 1));
+                result.add(new Tuple2<String, Long>(lang, 1L));
             }
         }
 
         return result.iterator();
     }
 
-    public static class MyRecord implements Serializable {
+    public static void runJob() 
+        throws MasterNotRunningException,IOException{
 
-        private String key;
-        private Integer myValue;
-
-        public MyRecord(String key, Integer myValue) {
-            this.key = key;
-            this.myValue = myValue;
-        }
-
-        public String getKey() {
-            return key;
-        }
-
-        public void setKey(String key) {
-            this.key = key;
-        }
-
-        public Integer getMyValue() {
-            return myValue;
-        }
-
-        public void setMyValue(Integer myValue) {
-            this.myValue = myValue;
-        }
-    }
-
-    public static void runJob(JavaSparkContext context, Configuration hbaseConf, 
-        HBaseAdmin admin, JavaRDD<String> data) throws MasterNotRunningException,IOException{
-
-        JavaPairRDD<String, Integer> test = data
+        JavaPairRDD<String, Long> rdd = GlobalManager.data
             .flatMapToPair(line -> extractLangFromLine(line))
             .reduceByKey((a, b) -> a + b);
     
-        System.out.println(test.take(100));
+        System.out.println(rdd.take(100));
 
-        HTable hTable = new HTable(hbaseConf, "al-jda-database");
+        JavaRDD<Input<String, Long>> rddInput = rdd.map(elt -> new Input<String, Long>(elt._1,elt._2));
 
-        if(!hTable.getTableDescriptor().hasFamily(Bytes.toBytes("nbTweetLang"))){
-            HColumnDescriptor columnDescriptor = new HColumnDescriptor("nbTweetLang");
-            admin.addColumn("al-jda-database", columnDescriptor);
-        }
+        GlobalManager.initTable("al-jda-lang","total");
 
-        JavaRDD<MyRecord> rdd = test.map(elt -> new MyRecord(elt._1,elt._2));
-
-        rdd.foreachPartition(iterator -> {
-            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
-                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-database"))) {
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(GlobalManager.hbaseConf);
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-lang"))) {
                     while (iterator.hasNext()) {
-                        MyRecord record = iterator.next();
-                        Put put = new Put(Bytes.toBytes(record.getKey()));
-                        put.addColumn(Bytes.toBytes("nbTweetLang"),Bytes.toBytes("total"), Bytes.toBytes(record.getMyValue()));
+                        Input<String, Long> input = iterator.next();
+                        Put put = new Put(Bytes.toBytes(input.getKey()));
+                        put.addColumn(Bytes.toBytes("total"), Bytes.toBytes("value"), Bytes.toBytes(input.getMyValue()));
                         mutator.mutate(put);
                     }
                 }
             }
         );
+
     }
 }
 

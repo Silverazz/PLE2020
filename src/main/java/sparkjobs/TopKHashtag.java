@@ -2,25 +2,34 @@ package bigdata;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.json.*;
 import scala.Tuple2;
 
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.MasterNotRunningException;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import java.io.IOException;
 
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
+
 import java.util.*;
+
+import org.apache.spark.api.java.JavaSparkContext;
+
 
 public class TopKHashtag extends SparkJob{
 
-    public static Iterator<Tuple2<String, Integer>> extractHashtagsFromLine(String line){
-        List<Tuple2<String, Integer>> result = new ArrayList();
+    public static Iterator<Tuple2<String, Long>> extractHashtagsFromLine(String line){
+        List<Tuple2<String, Long>> result = new ArrayList();
         JSONObject json = null;
         try {
             json = new JSONObject(line);
@@ -31,7 +40,7 @@ public class TopKHashtag extends SparkJob{
             if(hashtags != null){
                 for(int i = 0; i < hashtags.length(); i++){
                     String hashtag = hashtags.getJSONObject(i).getString("text");
-                    Tuple2<String, Integer> tuple = new Tuple2<String, Integer>(hashtag,1);
+                    Tuple2<String, Long> tuple = new Tuple2<String, Long>(hashtag,1L);
                     result.add(tuple);
                 }
             }
@@ -40,47 +49,120 @@ public class TopKHashtag extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob(JavaSparkContext context, Configuration hbaseConf, 
-        HBaseAdmin admin, JavaRDD<String> data, int k) throws MasterNotRunningException,IOException{
+    public static void save(JavaSparkContext spark, 
+    JavaRDD<Input<Long, Tuple2<String, Long>>> rddInput){
+        rddInput.foreachPartition(iterator -> {
+            Configuration hbaseConf = HBaseConfiguration.create();
+            HTable table = new HTable(hbaseConf, "al-jda-top-hashtag");
 
-        List<Tuple2<String, Integer>> test = data
+
+            while (iterator.hasNext()) {
+                Input<Long, Tuple2<String, Long>> input = iterator.next();
+                Put put1 = new Put(Bytes.toBytes(input.getKey()));
+                put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+                table.put(put1);
+                Put put2 = new Put(Bytes.toBytes(input.getKey()));
+                put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
+                table.put(put2);
+            }
+
+            table.close();
+        }
+        );
+    }
+
+    public static void runJob(int k) throws MasterNotRunningException,IOException{
+
+        List<Tuple2<String, Long>> rdd = GlobalManager.data
             .flatMapToPair(line -> extractHashtagsFromLine(line))
             .reduceByKey((a, b) -> a + b)
             .top(k, new TupleComparatorString());
 
-        JavaRDD<Tuple2<String, Integer>> test2 = context.parallelize(test);
-        System.out.println(test2.take(k));
+        JavaRDD<Input<Long, Tuple2<String, Long>>> rddInput = GlobalManager.context
+            .parallelize(rdd)
+            .zipWithIndex()
+            .map(elt -> new Input<Long, Tuple2<String, Long>>(elt._2, elt._1));
 
-        HTable hTable = new HTable(hbaseConf, "al-jda-database");
+        GlobalManager.initTable("al-jda-top-hashtag","hashtag");
 
-        if(!hTable.getTableDescriptor().hasFamily(Bytes.toBytes("topKHashtag"))){
-            HColumnDescriptor columnDescriptor = new HColumnDescriptor("topKHashtag");
-            admin.addColumn("al-jda-database", columnDescriptor);
-        }
+        save(GlobalManager.context, rddInput);
 
-        // test2.foreachPartition(iterator -> {
-        //     try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
-        //          //option 1.1 is to use Table table = connection.getTable(TableName.valueOf(tableName));
-        //         BufferedMutator mutator = connection.getBufferedMutator(hTable.getName())) {
-        //             while (iterator.hasNext()) {
-        //                 Tuple2<String, Integer> line = iterator.next();
-        //                 Put put = new Put(Bytes.toBytes(line._1));
-        //                 put.addColumn(Bytes.toBytes("topKHashtag"), Bytes.toBytes("count"), Bytes.toBytes(line._2));
-        //                 mutator.mutate(put);
-        //                 //table.put(put);
-        //             }
-        //         }
+        
+        // rddInput.foreachPartition(iterator -> {
+        //     Configuration hbaseConf = HBaseConfiguration.create();
+        //     HTable table = new HTable(hbaseConf, "al-jda-top-hashtag");
+
+
+        //     while (iterator.hasNext()) {
+        //         Input<Long, Tuple2<String, Long>> input = iterator.next();
+        //         Put put1 = new Put(Bytes.toBytes(input.getKey()));
+        //         put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+        //         table.put(put1);
+        //         Put put2 = new Put(Bytes.toBytes(input.getKey()));
+        //         put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
+        //         table.put(put2);
         //     }
+
+        //     table.close();
+        // }
+        // );
+        
+
+
+        // public static void optionTwo(SparkSession sparkSession, String tableName, JavaRDD<MyRecord> rdd) throws IOException {
+            // Configuration config = new Configuration();
+            // config.set(TableOutputFormat.OUTPUT_TABLE, "al-jda-top-hashtag");
+            // Job jobConfig = Job.getInstance(config);
+            // jobConfig.setOutputFormatClass(TableOutputFormat.class);
+            // rddInput.mapToPair(input -> {
+            //     Put put1 = new Put(Bytes.toBytes(input.getKey()));
+            //     put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+            //     // table.put(put1);
+            //     // Put put2 = new Put(Bytes.toBytes(input.getKey()));
+            //     // put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
+            //     // table.put(put2);
+            //     return new Tuple2<ImmutableBytesWritable, Put>(new ImmutableBytesWritable(put1.getRow()), put1);
+            // }).saveAsNewAPIHadoopDataset(jobConfig.getConfiguration());
+        // }
+        
+
+
+        // rddInput.foreachPartition(iterator -> {
+        //     Configuration hbaseConf = HBaseConfiguration.create();
+        //     HTable table = new HTable(hbaseConf, "al-jda-top-hashtag");
+
+
+        //     while (iterator.hasNext()) {
+        //         Input<Long, Tuple2<String, Long>> input = iterator.next();
+        //         Put put1 = new Put(Bytes.toBytes(input.getKey()));
+        //         put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+        //         table.put(put1);
+        //         Put put2 = new Put(Bytes.toBytes(input.getKey()));
+        //         put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
+        //         table.put(put2);
+        //     }
+
+        //     table.close();
+
+            
+        // }
+
+        
+
+        //     // Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+        //     //     BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-top-hashtag"));
+        //     //         while (iterator.hasNext()) {
+        //     //             Input<Long, Tuple2<String, Long>> input = iterator.next();
+        //     //             Put put1 = new Put(Bytes.toBytes(input.getKey()));
+        //     //             put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+        //     //             mutator.mutate(put1);
+        //     //             Put put2 = new Put(Bytes.toBytes(input.getKey()));
+        //     //             put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
+        //     //             mutator.mutate(put2);
+        //     //         }
+        //     // }
         // );
 
-        // Configuration config = new Configuration();
-        // config.set(TableOutputFormat.OUTPUT_TABLE, "al-jda-databases");
-        // Job jobConfig = Job.getInstance(config);
-        // jobConfig.setOutputFormatClass(TableOutputFormat.class);
-        // test2.mapToPair(record -> {
-        //     Put put = new Put(Bytes.toBytes(record.getKey()));
-        //     put.addColumn(Bytes.toBytes("c"), Bytes.toBytes("v"), Bytes.toBytes(record.getMyValue()));
-        //     return new Tuple2<ImmutableBytesWritable, Put>(new ImmutableBytesWritable(put.getRow()), put);
-        // }).saveAsNewAPIHadoopDataset(jobConfig.getConfiguration());
+        
     }
 }
