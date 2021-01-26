@@ -20,10 +20,9 @@ import org.apache.hadoop.hbase.TableName;
 
 import java.util.*;
 
-// import org.apache.hadoop.io.IntWritable;
-// import org.apache.hadoop.io.LongWritable;
-// import org.apache.hadoop.io.Text;
-// import org.apache.hadoop.io.Writable;
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 
 public class NbTweetLang extends SparkJob{
 
@@ -49,8 +48,7 @@ public class NbTweetLang extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob() 
-        throws MasterNotRunningException,IOException{
+    public static void runJob() throws MasterNotRunningException,IOException{
 
         JavaPairRDD<String, Long> rdd = GlobalManager.data
             .flatMapToPair(line -> extractLangFromLine(line))
@@ -63,7 +61,7 @@ public class NbTweetLang extends SparkJob{
         GlobalManager.initTable("al-jda-lang","total");
 
         rddInput.foreachPartition(iterator -> {
-            try (Connection connection = ConnectionFactory.createConnection(GlobalManager.hbaseConf);
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
                 BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-lang"))) {
                     while (iterator.hasNext()) {
                         Input<String, Long> input = iterator.next();

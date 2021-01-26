@@ -24,6 +24,10 @@ import org.apache.hadoop.hbase.TableName;
 
 import org.apache.spark.SparkConf;
 
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
+
 public class GlobalManager {
 
     public static JavaSparkContext context;
@@ -102,21 +106,16 @@ public class GlobalManager {
         }
     }
 
-    // public static <K, V> void saveRDD(JavaRDD<Input<K, V>> rdd, String table, 
-    //     String columnFamily, String column) {
-
-    //     rdd.foreachPartition(iterator -> {
-    //         try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
-    //             BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf(table))) {
-    //                 while (iterator.hasNext()) {
-    //                     Input<K, V> input = iterator.next();
-    //                     K key = input.getKey();
-    //                     Put put = new Put(Bytes.toBytes(key));
-    //                     put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(column), Bytes.toBytes(input.getMyValue()));
-    //                     mutator.mutate(put);
-    //                 }
-    //             }
-    //         }
-    //     );
-    // }
+    // public static void saveRDD(String tableName, String columnFamily, 
+    //     String column, JavaRDD<Input> rddInput) throws IOException {
+    //         Configuration config = new Configuration();
+    //         config.set(TableOutputFormat.OUTPUT_TABLE, tableName);
+    //         Job jobConfig = Job.getInstance(config);
+    //         jobConfig.setOutputFormatClass(TableOutputFormat.class);
+    //         rddInput.mapToPair(input -> {
+    //             Put put = new Put(Bytes.toBytes(input.getKey()));
+    //             put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(column), Bytes.toBytes(input.getMyValue()));
+    //             return new Tuple2<ImmutableBytesWritable, Put>(new ImmutableBytesWritable(put.getRow()), put);
+    //         }).saveAsNewAPIHadoopDataset(jobConfig.getConfiguration());
+    //     }
 }

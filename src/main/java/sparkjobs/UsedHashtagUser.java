@@ -8,6 +8,14 @@ import scala.Tuple2;
 
 import java.util.*;
 
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
 public class UsedHashtagUser extends SparkJob{
 
     public static Iterator<String> extractUserUsedHashtagFromLine(String line){
@@ -30,8 +38,8 @@ public class UsedHashtagUser extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
-        JavaRDD<String> test = data
+    public static void runJob() throws MasterNotRunningException,IOException {
+        JavaRDD<String> test = GlobalManager.data
             .flatMap(line -> extractUserUsedHashtagFromLine(line))
             .distinct();
 

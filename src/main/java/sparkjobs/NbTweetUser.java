@@ -6,16 +6,15 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.json.*;
 import scala.Tuple2;
 
-import org.apache.hadoop.hbase.HBaseConfiguration;
-
-
-import java.io.IOException;
-import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.TableName;
 
 import java.util.*;
+
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 
 public class NbTweetUser extends SparkJob{
 
@@ -36,8 +35,7 @@ public class NbTweetUser extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob() 
-        throws MasterNotRunningException,IOException{
+    public static void runJob() throws MasterNotRunningException,IOException{
 
         JavaPairRDD<String, Long> rdd = GlobalManager.data
             .flatMapToPair(line -> extractUserFromLine(line))

@@ -104,22 +104,6 @@ public abstract class SparkJob {
 
         return nbReweets;
     }
-    
-
-    // public static void saveRDD(JavaRDD<Input> rdd, String column, )
-
-    // rdd.foreachPartition(iterator -> {
-    //     try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
-    //         BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-database"))) {
-    //             while (iterator.hasNext()) {
-    //                 MyRecord record = iterator.next();
-    //                 Put put = new Put(Bytes.toBytes(record.getKey()));
-    //                 put.addColumn(Bytes.toBytes("nbTweetLang"),Bytes.toBytes("total"), Bytes.toBytes(record.getMyValue()));
-    //                 mutator.mutate(put);
-    //             }
-    //         }
-    //     }
-    // );
 
     public static Long retrieveTweetId(JSONObject json){
         long tweetId = (long) -1;

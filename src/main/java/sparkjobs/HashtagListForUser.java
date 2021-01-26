@@ -6,6 +6,18 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.json.*;
 import scala.Tuple2;
 
+// import org.apache.hadoop.io.LongWritable;
+// import org.apache.hadoop.io.Text;
+// import org.apache.hadoop.io.WritableUtils;
+
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
 import java.util.*;
 
 public class HashtagListForUser extends SparkJob{
@@ -32,13 +44,36 @@ public class HashtagListForUser extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
-        JavaPairRDD <String, Iterable<String>> test = data
+    public static void runJob() throws MasterNotRunningException,IOException {
+
+        JavaPairRDD <String, Iterable<String>> rdd = GlobalManager.data
             .flatMapToPair( line -> extractTupleUserHashtagFromLine(line))
             .distinct()
             .groupByKey();
 
-        System.out.println(test.take(100));
+        JavaRDD<Input<String, String>> rddInput = rdd
+            .map(elt -> {
+                String str = "";
+                for(String s : elt._2){
+                    str += "\n"+s;
+                }
+                return new Input<String, String>(elt._1,str);
+            });
+
+        GlobalManager.initTable("al-jda-user-hashtag-list","hashtag");
+
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-user-hashtag-list"))) {
+                    while (iterator.hasNext()) {
+                        Input<String, String> input = iterator.next();
+                        Put put = new Put(Bytes.toBytes(input.getKey()));
+                        put.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("list"), Bytes.toBytes(input.getMyValue()));
+                        mutator.mutate(put);
+                    }
+                }
+            }
+        );
     }
 }
 

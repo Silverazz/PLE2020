@@ -15,6 +15,7 @@ import org.apache.hadoop.hbase.TableName;
 
 import java.io.IOException;
 import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 
 public class FakeInfluenceur extends SparkJob{
 
@@ -63,8 +64,7 @@ public class FakeInfluenceur extends SparkJob{
     }
     
 
-    public static void runJob() 
-        throws MasterNotRunningException,IOException{
+    public static void runJob() throws MasterNotRunningException,IOException{
 
         JavaPairRDD<String, Long> rddFakeInluencer = GlobalManager.data
             .flatMapToPair(line -> extractFakeInfluencerAndFollowers(line))
@@ -76,15 +76,13 @@ public class FakeInfluenceur extends SparkJob{
 
         JavaPairRDD<String, Long> rdd = rddFakeInluencer.subtract(rddRealInlfuencer);
 
-        System.out.println(rdd.take(20));
-
         JavaRDD<Input<String, Long>> rddInput = rdd
             .map(elt -> new Input<String, Long>(elt._1,elt._2));
 
         GlobalManager.initTable("al-jda-fake-influencer","total");
 
         rddInput.foreachPartition(iterator -> {
-            try (Connection connection = ConnectionFactory.createConnection(GlobalManager.hbaseConf);
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
                 BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-fake-influencer"))) {
                     while (iterator.hasNext()) {
                         Input<String, Long> input = iterator.next();

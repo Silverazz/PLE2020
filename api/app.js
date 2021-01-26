@@ -42,9 +42,14 @@ let client = new hbase.Client();
 //     });
 
 // Routes
-app.get('/', (req,resp) => {
-    resp.send('bouyakaaaaa');
+app.get('/user/:username', (req,resp) => {
+    //return user information (nb tweet + hashtags)
 });
+
+app.get('/top-hashtag/:k', (req,resp) => {
+    //return user information (nb tweet + hashtags)
+});
+
 
 console.log('Application is running on port 8888!');
 

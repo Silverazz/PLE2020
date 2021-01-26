@@ -12,6 +12,14 @@ import java.util.regex.*;
 import java.util.*;
 import java.util.stream.*;
 
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
 public class RetagTweets extends SparkJob{
 
     public static Iterator<Tuple2<String, Integer>> extractHashtagsFromLine(String line){
@@ -197,13 +205,13 @@ public class RetagTweets extends SparkJob{
         return jsonB.toString();
     }
     
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
+    public static void runJob() throws MasterNotRunningException,IOException {
 
-        JavaPairRDD<String, Integer> hashtagsTweets = data
+        JavaPairRDD<String, Integer> hashtagsTweets = GlobalManager.data
             .flatMapToPair(line -> extractHashtagsFromLine(line))
             .distinct();
 
-        JavaPairRDD<String, String> wordsFromTextAndTweet = data
+        JavaPairRDD<String, String> wordsFromTextAndTweet = GlobalManager.data
             .flatMapToPair(line -> extractWordsFromText(line));
 
         JavaPairRDD<String, Tuple2<Integer, String>> hashtagsJoinedTweets = hashtagsTweets.join(wordsFromTextAndTweet);
@@ -212,6 +220,22 @@ public class RetagTweets extends SparkJob{
             .mapToPair((Tuple2<String, Tuple2<Integer, String>> tuple) -> replaceKeyByTweetIdAndModifyTweet(tuple))
             .reduceByKey((a,b) -> mergeTweets(a, b));
 
-        System.out.println(tweetIDAndTweetModified.take(1));
+        JavaRDD<Input<Long, String>> rddInput = tweetIDAndTweetModified
+            .map(elt -> new Input<Long, String>(elt._1, elt._2));
+
+        GlobalManager.initTable("al-jda-retag","tweet");
+
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-retag"))) {
+                    while (iterator.hasNext()) {
+                        Input<Long, String> input = iterator.next();
+                        Put put = new Put(Bytes.toBytes(input.getKey()));
+                        put.addColumn(Bytes.toBytes("tweet"), Bytes.toBytes("value"), Bytes.toBytes(input.getMyValue()));
+                        mutator.mutate(put);
+                    }
+                }
+            }
+        );
     }
 }

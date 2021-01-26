@@ -16,15 +16,7 @@ import org.apache.hadoop.hbase.TableName;
 
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
-import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
-
-import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
-import org.apache.hadoop.mapreduce.Job;
-
 import java.util.*;
-
-import org.apache.spark.api.java.JavaSparkContext;
-
 
 public class TopKHashtag extends SparkJob{
 
@@ -49,28 +41,6 @@ public class TopKHashtag extends SparkJob{
         return result.iterator();
     }
 
-    public static void save(JavaSparkContext spark, 
-    JavaRDD<Input<Long, Tuple2<String, Long>>> rddInput){
-        rddInput.foreachPartition(iterator -> {
-            Configuration hbaseConf = HBaseConfiguration.create();
-            HTable table = new HTable(hbaseConf, "al-jda-top-hashtag");
-
-
-            while (iterator.hasNext()) {
-                Input<Long, Tuple2<String, Long>> input = iterator.next();
-                Put put1 = new Put(Bytes.toBytes(input.getKey()));
-                put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
-                table.put(put1);
-                Put put2 = new Put(Bytes.toBytes(input.getKey()));
-                put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
-                table.put(put2);
-            }
-
-            table.close();
-        }
-        );
-    }
-
     public static void runJob(int k) throws MasterNotRunningException,IOException{
 
         List<Tuple2<String, Long>> rdd = GlobalManager.data
@@ -85,84 +55,21 @@ public class TopKHashtag extends SparkJob{
 
         GlobalManager.initTable("al-jda-top-hashtag","hashtag");
 
-        save(GlobalManager.context, rddInput);
-
-        
-        // rddInput.foreachPartition(iterator -> {
-        //     Configuration hbaseConf = HBaseConfiguration.create();
-        //     HTable table = new HTable(hbaseConf, "al-jda-top-hashtag");
-
-
-        //     while (iterator.hasNext()) {
-        //         Input<Long, Tuple2<String, Long>> input = iterator.next();
-        //         Put put1 = new Put(Bytes.toBytes(input.getKey()));
-        //         put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
-        //         table.put(put1);
-        //         Put put2 = new Put(Bytes.toBytes(input.getKey()));
-        //         put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
-        //         table.put(put2);
-        //     }
-
-        //     table.close();
-        // }
-        // );
-        
-
-
-        // public static void optionTwo(SparkSession sparkSession, String tableName, JavaRDD<MyRecord> rdd) throws IOException {
-            // Configuration config = new Configuration();
-            // config.set(TableOutputFormat.OUTPUT_TABLE, "al-jda-top-hashtag");
-            // Job jobConfig = Job.getInstance(config);
-            // jobConfig.setOutputFormatClass(TableOutputFormat.class);
-            // rddInput.mapToPair(input -> {
-            //     Put put1 = new Put(Bytes.toBytes(input.getKey()));
-            //     put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
-            //     // table.put(put1);
-            //     // Put put2 = new Put(Bytes.toBytes(input.getKey()));
-            //     // put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
-            //     // table.put(put2);
-            //     return new Tuple2<ImmutableBytesWritable, Put>(new ImmutableBytesWritable(put1.getRow()), put1);
-            // }).saveAsNewAPIHadoopDataset(jobConfig.getConfiguration());
-        // }
-        
-
-
-        // rddInput.foreachPartition(iterator -> {
-        //     Configuration hbaseConf = HBaseConfiguration.create();
-        //     HTable table = new HTable(hbaseConf, "al-jda-top-hashtag");
-
-
-        //     while (iterator.hasNext()) {
-        //         Input<Long, Tuple2<String, Long>> input = iterator.next();
-        //         Put put1 = new Put(Bytes.toBytes(input.getKey()));
-        //         put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
-        //         table.put(put1);
-        //         Put put2 = new Put(Bytes.toBytes(input.getKey()));
-        //         put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
-        //         table.put(put2);
-        //     }
-
-        //     table.close();
-
-            
-        // }
-
-        
-
-        //     // Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
-        //     //     BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-top-hashtag"));
-        //     //         while (iterator.hasNext()) {
-        //     //             Input<Long, Tuple2<String, Long>> input = iterator.next();
-        //     //             Put put1 = new Put(Bytes.toBytes(input.getKey()));
-        //     //             put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
-        //     //             mutator.mutate(put1);
-        //     //             Put put2 = new Put(Bytes.toBytes(input.getKey()));
-        //     //             put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
-        //     //             mutator.mutate(put2);
-        //     //         }
-        //     // }
-        // );
-
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-hashtag"))) {
+                    while (iterator.hasNext()) {
+                        Input<Long, Tuple2<String, Long>> input = iterator.next();
+                        Put put1 = new Put(Bytes.toBytes(input.getKey()));
+                        put1.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+                        mutator.mutate(put1);
+                        Put put2 = new Put(Bytes.toBytes(input.getKey()));
+                        put2.addColumn(Bytes.toBytes("hashtag"), Bytes.toBytes("number"), Bytes.toBytes(input.getMyValue()._2));
+                        mutator.mutate(put2);
+                    }
+                }
+            }
+        );
         
     }
 }

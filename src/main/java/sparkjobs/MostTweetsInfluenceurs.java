@@ -10,6 +10,14 @@ import scala.Tuple2;
 
 import java.util.*;
 
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
 public class MostTweetsInfluenceurs extends SparkJob{
 
     public static Iterator<List<String>> extractHashtagTriplets(String line){
@@ -66,40 +74,56 @@ public class MostTweetsInfluenceurs extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data, int k){
+    public static void runJob(int k) throws MasterNotRunningException,IOException {
 
         //TopKHashtagTriplets
-        List<Tuple2<List<String>, Long>> test = data
+        List<Tuple2<List<String>, Long>> rdd = GlobalManager.data
             .flatMap(line -> extractHashtagTriplets(line))
             .mapToPair(hashtagTriplet -> new Tuple2<List<String>, Long>(hashtagTriplet, 1L))
             .reduceByKey((a, b) -> a + b)
             .top(k, new TupleComparatorListString());
 
-        JavaPairRDD<List<String>, Long> test2 = context.parallelizePairs(test);
+        JavaPairRDD<List<String>, Long> rdd2 = GlobalManager.context.parallelizePairs(rdd);
 
         //HashtagTriplets - User
-        JavaPairRDD <List<String>, String> test3 = data
+        JavaPairRDD <List<String>, String> rdd3 = GlobalManager.data
             .flatMapToPair( line -> extractHashtagTripletsAndUsers(line));
 
         //TopKHashtagsTriplets - User
-        JavaPairRDD<List<String>, Tuple2<Long, String>> test4 = test2.join(test3);
+        JavaPairRDD<List<String>, Tuple2<Long, String>> rdd4 = rdd2.join(rdd3);
 
         //((TopKHashtagsTriplets, User), 1) - reduce - topk
-        JavaPairRDD<List<String>, Tuple2<String, Long>> test5 = test4
+        JavaPairRDD<List<String>, Tuple2<String, Long>> rdd5 = rdd4
             .mapToPair((Tuple2<List<String>, Tuple2<Long, String>> tuple) -> new Tuple2<>(new Tuple2<>(tuple._1, tuple._2._2), 1L))
             .reduceByKey((a, b) -> a + b)
             .mapToPair((Tuple2<Tuple2<List<String>, String>, Long> tuple) -> new Tuple2<>(tuple._1._1, new Tuple2<>(tuple._1._2, tuple._2)))
-            .reduceByKey((a,b) -> {
-                if (a._2 > b._2){
-                  return a;
-                }
-                else{
-                  return b;
-                }
-              });
-              
+            .reduceByKey((a,b) -> a._2 > b._2 ? a : b);
 
-        System.out.println(test5.take(k));
+        JavaRDD<Input<String, Tuple2<String, Long>>> rddInput = rdd5
+            .map(elt -> {
+                String key = "";
+                for(String s : elt._1)
+                    key += "\n"+s;
+                return new Input<String, Tuple2<String, Long>>(key, elt._2);
+            });
+
+        GlobalManager.initTable("al-jda-most-tweet-influencer","influencer");
+
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-most-tweet-influencer"))) {
+                    while (iterator.hasNext()) {
+                        Input<String, Tuple2<String, Long>> input = iterator.next();
+                        Put put1 = new Put(Bytes.toBytes(input.getKey()));
+                        put1.addColumn(Bytes.toBytes("influencer"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
+                        mutator.mutate(put1);
+                        Put put2 = new Put(Bytes.toBytes(input.getKey()));
+                        put2.addColumn(Bytes.toBytes("influencer"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._2));
+                        mutator.mutate(put2);
+                    }
+                }
+            }
+        );
 
     }
 }

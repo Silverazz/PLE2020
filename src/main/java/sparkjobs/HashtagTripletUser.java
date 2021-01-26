@@ -8,6 +8,14 @@ import scala.Tuple2;
 
 import java.util.*;
 
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
 public class HashtagTripletUser extends SparkJob{
 
     public static Iterator<Tuple2<List<String>, String>> extractHashtagTripletsAndUsers(String line){
@@ -39,13 +47,37 @@ public class HashtagTripletUser extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
-        JavaPairRDD <List<String>, Iterable<String>> test = data
+    public static void runJob()throws MasterNotRunningException,IOException{
+        JavaPairRDD <List<String>, Iterable<String>> rdd = GlobalManager.data
             .flatMapToPair( line -> extractHashtagTripletsAndUsers(line))
             .distinct()
             .groupByKey();
     
-        System.out.println(test.take(100));
+        JavaRDD<Input<String, String>> rddInput = rdd
+            .map(elt -> {
+                String key = "";
+                String value = "";
+                for(String s : elt._1)
+                    key += "\n"+s;
+                for(String s : elt._2)
+                    value += "\n"+s;
+                return new Input<String, String>(key, value);
+            });
+
+        GlobalManager.initTable("al-jda-hashtag-triplet-user","users");
+
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-hashtag-triplet-user"))) {
+                    while (iterator.hasNext()) {
+                        Input<String, String> input = iterator.next();
+                        Put put = new Put(Bytes.toBytes(input.getKey()));
+                        put.addColumn(Bytes.toBytes("users"), Bytes.toBytes("list"), Bytes.toBytes(input.getMyValue()));
+                        mutator.mutate(put);
+                    }
+                }
+            }
+        );
     }
 }
 

@@ -10,6 +10,14 @@ import scala.Tuple2;
 
 import java.util.*;
 
+import java.io.IOException;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.TableName;
+
 public class HashtagMostFollowers extends SparkJob{
 
     public static Iterator<Tuple2<Tuple2<String, String>, Long>> extractHashtagUserAndNbFollowers(String line){
@@ -42,18 +50,34 @@ public class HashtagMostFollowers extends SparkJob{
         return result.iterator();
     }
     
-    public static void runJob(JavaSparkContext context, JavaRDD<String> data){
+    public static void runJob(int k)throws MasterNotRunningException,IOException {
 
-        List<Tuple2<String, Long>> test = data
+        List<Tuple2<String, Long>> rdd = GlobalManager.data
             .flatMapToPair(line -> extractHashtagUserAndNbFollowers(line))
             .distinct()
             .mapToPair(tuple -> new Tuple2<>(tuple._1._1, tuple._2))
             .reduceByKey((a, b) -> a + b)
-            .top(10, new TupleComparatorLong());
+            .top(k, new TupleComparatorLong());
 
 
-        JavaPairRDD<String, Long> test2 = context.parallelizePairs(test);
-        System.out.println(test2.take(10));
+        JavaRDD<Input<String, Long>> rddInput = GlobalManager.context
+            .parallelize(rdd)
+            .map(elt -> new Input<String, Long>(elt._1, elt._2));
+
+        GlobalManager.initTable("al-jda-user-hashtag-most-followers","total");
+
+        rddInput.foreachPartition(iterator -> {
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-user-hashtag-most-followers"))) {
+                    while (iterator.hasNext()) {
+                        Input<String, Long> input = iterator.next();
+                        Put put = new Put(Bytes.toBytes(input.getKey()));
+                        put.addColumn(Bytes.toBytes("total"), Bytes.toBytes("value"), Bytes.toBytes(input.getMyValue()));
+                        mutator.mutate(put);
+                    }
+                }
+            }
+        );
 
     }
 }

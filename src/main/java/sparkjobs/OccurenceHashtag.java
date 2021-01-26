@@ -14,6 +14,7 @@ import org.apache.hadoop.hbase.TableName;
 
 import java.io.IOException;
 import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 
 public class OccurenceHashtag extends SparkJob{
 
@@ -37,8 +38,7 @@ public class OccurenceHashtag extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob() 
-        throws MasterNotRunningException,IOException{
+    public static void runJob() throws MasterNotRunningException,IOException{
 
         JavaPairRDD<String, Long> rdd = GlobalManager.data
             .flatMapToPair(line -> extractHashtagsFromLine(line))
@@ -52,7 +52,7 @@ public class OccurenceHashtag extends SparkJob{
         GlobalManager.initTable("al-jda-hashtag","total");
 
         rddInput.foreachPartition(iterator -> {
-            try (Connection connection = ConnectionFactory.createConnection(GlobalManager.hbaseConf);
+            try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
                 BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-hashtag"))) {
                     while (iterator.hasNext()) {
                         Input<String, Long> input = iterator.next();
