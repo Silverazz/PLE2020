@@ -43,14 +43,6 @@ public abstract class SparkJob {
         }
     }
 
-    protected static class TupleComparatorStringInt implements Comparator<Tuple2<String, Integer>>, Serializable {
-
-        @Override
-        public int compare(Tuple2<String, Integer> tuple1, Tuple2<String, Integer> tuple2) {
-            return Integer.compare(tuple1._2, tuple2._2);
-        }
-    }
-
     protected static class TupleComparatorLong implements Comparator<Tuple2<String, Long>>, Serializable {
 
         @Override
