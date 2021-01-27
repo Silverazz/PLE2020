@@ -13,7 +13,8 @@ public class Project {
         GlobalManager.initEnv(-1);
 
         // TopKHashtag.runJob(10000);
-        NbTweetUser.runJob();
+        // NbTweetUser.runJob();
+        FakeInfluenceur.runJob();
 
         GlobalManager.close();
 	}
