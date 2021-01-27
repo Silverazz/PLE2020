@@ -13,10 +13,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
 
-
-//Hbase
-// const client = hbase({ host: 'localhost', port: 60010 });
-
 let client = new hbase.Client();
 
 // client.status_cluster( function( error, statusCluster ){
@@ -44,6 +40,12 @@ let client = new hbase.Client();
 // Routes
 app.get('/user/:username', (req,resp) => {
     //return user information (nb tweet + hashtags)
+    resp.send('ok');
+});
+
+app.get('/test', (req,resp) => {
+    //return user information (nb tweet + hashtags)
+    resp.send('test ok');
 });
 
 app.get('/top-hashtag/:k', (req,resp) => {
@@ -51,6 +53,6 @@ app.get('/top-hashtag/:k', (req,resp) => {
 });
 
 
-console.log('Application is running on port 8888!');
+console.log('Application is running on port 9090!');
 
-app.listen(8888);
+app.listen(9090);

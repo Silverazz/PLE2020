@@ -13,13 +13,18 @@ public class Project {
         GlobalManager.initEnv(-1);
 
         // TopKHashtag.runJob(10000);
-<<<<<<< HEAD
         // NbTweetUser.runJob();
-        FakeInfluenceur.runJob();
-=======
-        //NbTweetUser.runJob();
-        //UserListForHashtag.runJob();
->>>>>>> 0b513b0344bd3d52821d7a8863db3c4e294021e7
+        // FakeInfluenceur.runJob();
+        // HashtagListForUser.runJob();
+        // RetagTweets.runJob();
+        // OccurenceHashtag.runJob();
+        // UserListForHashtag.runJob();
+        // MostTweetsInfluenceurs.runJob(10000);
+        // NbTweetLang.runJob();
+        // HashtagTripletUser.runJob();
+        // HashtagMostFollowers.runJob(10000);
+        // TopKHashtagsTriplets.runJob(10000);
+
 
         GlobalManager.close();
 	}

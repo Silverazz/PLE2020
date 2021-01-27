@@ -47,7 +47,7 @@ public class HashtagTripletUser extends SparkJob{
         return result.iterator();
     }
 
-    public static void runJob()throws MasterNotRunningException,IOException{
+    public static void runJob() throws MasterNotRunningException,IOException{
         JavaPairRDD <List<String>, Iterable<String>> rdd = GlobalManager.data
             .flatMapToPair( line -> extractHashtagTripletsAndUsers(line))
             .distinct()

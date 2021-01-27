@@ -66,15 +66,15 @@ public class FakeInfluenceur extends SparkJob{
 
     public static void runJob() throws MasterNotRunningException,IOException{
 
-        JavaPairRDD<String, Long> rddFakeInluencer = GlobalManager.data
+        JavaPairRDD<String, Long> rddFakeInfluencer = GlobalManager.data
             .flatMapToPair(line -> extractFakeInfluencerAndFollowers(line))
             .distinct();
 
-        JavaPairRDD<String, Long> rddRealInlfuencer = GlobalManager.data
+        JavaPairRDD<String, Long> rddRealInfluencer = GlobalManager.data
             .flatMapToPair(line -> extractRealInfluencerAndFollowers(line))
             .distinct();
 
-        JavaPairRDD<String, Long> rdd = rddFakeInluencer.subtract(rddRealInlfuencer);
+        JavaPairRDD<String, Long> rdd = rddFakeInfluencer.subtract(rddRealInfluencer);
 
         JavaRDD<Input<String, Long>> rddInput = rdd
             .map(elt -> new Input<String, Long>(elt._1,elt._2));

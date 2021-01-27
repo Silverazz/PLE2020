@@ -1,7 +1,8 @@
-let btn1 = document.getElementById('btn1');
+let userBtn = document.querySelector('body > div > form > button');
+let userInput = document.querySelector('#user');
 
-btn1.addEventListener('click', event => {
-    fetch('http://localhost:8888/')
+userBtn.addEventListener('click', event => {
+    fetch('http://localhost:9090/test')
         .then(resp => {
             if(resp.ok) {
                 console.log("TEST WORKING");
@@ -11,7 +12,9 @@ btn1.addEventListener('click', event => {
             }
         })
         .catch(error => {
-            console.log("error cheh : "+ error);
+            console.log("userBtn : "+ error);
         });
 });
 
+
+console.log('bouyaka');
