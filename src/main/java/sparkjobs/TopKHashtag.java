@@ -57,7 +57,7 @@ public class TopKHashtag extends SparkJob{
 
         rddInput.foreachPartition(iterator -> {
             try (Connection connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
-                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-hashtag"))) {
+                BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf("al-jda-top-hashtag"))) {
                     while (iterator.hasNext()) {
                         Input<Long, Tuple2<String, Long>> input = iterator.next();
                         Put put1 = new Put(Bytes.toBytes(input.getKey()));

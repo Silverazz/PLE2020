@@ -32,16 +32,47 @@ let client = new hbase.Client();
 // client
 //     .table("al-jda-database")
 //     .row("pt")
-//     .get("nbTweetLang:total", (err,[cell]) => {
-//         console.log(cell)
-//         console.log(JSON.stringify(cell.$));
-//     });
+    // .get("nbTweetLang:total", (err,[cell]) => {
+    //     console.log(cell)
+    //     console.log(JSON.stringify(cell.$));
+    // });
 
 // Routes
 app.get('/user/:username', (req,resp) => {
-    //return user information (nb tweet + hashtags)
+    let table = client
+    .table('al-jda-top-hashtag')
+    .row('\x00\x00\x00\x00\x00\x00\x00\x13')
+    .get("hashtag", (err,[cell]) => {
+        if(err)
+            console.log(err);
+        else
+        // console.log(JSON.stringify(cell.$));
+        console.info(cell);
+    });
     resp.send('ok');
 });
+
+client
+    .table('al-jda-top-hashtag')
+    .row('\x00\x00\x00\x00\x00\x00\x01W')
+    .get("hashtag:name", (err,[cell]) => {
+        if(err)
+            console.log(err);
+        else
+        // console.log(JSON.stringify(cell.$));
+        console.info(cell);
+    });
+    client
+    .table('al-jda-top-hashtag')
+    .row('\x00\x00\x00\x00\x00\x00\x01W')
+    .get("hashtag:number", (err,[cell]) => {
+        console.log('bouyaaa '+(00000001<<32));
+        if(err)
+            console.log(err);
+        else
+        // console.log(JSON.stringify(cell.$));
+        console.info(cell);
+    });
 
 app.get('/test', (req,resp) => {
     //return user information (nb tweet + hashtags)
