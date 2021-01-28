@@ -1,5 +1,3 @@
-let languages;
-
 (async () => {
     try {
         let response = await fetch('http://localhost:9090/languages');
