@@ -1,20 +1,13 @@
-let userBtn = document.querySelector('body > div > form > button');
-let userInput = document.querySelector('#user');
+let inputUser = document.querySelector('body > div > input[type=text]');
+let buttonUser = document.querySelector('body > div > button');
 
-userBtn.addEventListener('click', event => {
-    fetch('http://localhost:9090/test')
-        .then(resp => {
-            if(resp.ok) {
-                console.log("TEST WORKING");
-            }
-            else{
-                console.log(resp);
-            }
-        })
-        .catch(error => {
-            console.log("userBtn : "+ error);
-        });
+buttonUser.addEventListener('click', async event => {
+    if(inputUser.value) {
+        try {
+            let resp = await fetch('http://localhost:9090/user/'+inputUser.value);
+            // window.location.href = 'result.html';
+        } catch (error) {
+            alert(error);
+        }
+    }
 });
-
-
-console.log('bouyaka');
