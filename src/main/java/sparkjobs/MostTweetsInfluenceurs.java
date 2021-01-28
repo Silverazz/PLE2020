@@ -118,7 +118,7 @@ public class MostTweetsInfluenceurs extends SparkJob{
                         put1.addColumn(Bytes.toBytes("influencer"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._1));
                         mutator.mutate(put1);
                         Put put2 = new Put(Bytes.toBytes(input.getKey()));
-                        put2.addColumn(Bytes.toBytes("influencer"), Bytes.toBytes("name"), Bytes.toBytes(input.getMyValue()._2));
+                        put2.addColumn(Bytes.toBytes("influencer"), Bytes.toBytes("total"), Bytes.toBytes(input.getMyValue()._2));
                         mutator.mutate(put2);
                     }
                 }
